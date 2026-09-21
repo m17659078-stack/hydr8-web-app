@@ -4,444 +4,111 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>HYDR8 - Sweat Tracking</title>
-    <!-- Include FontAwesome for icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Include Chart.js for live tracking graphs -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        /* Base Styles & Dark Theme */
-        :root {
-            --bg-color: #0b0f19;
-            --card-bg: #151c2f;
-            --primary: #1e62ff;
-            --text-main: #ffffff;
-            --text-muted: #8b95a5;
-            --green: #10b981;
-            --orange: #f59e0b;
-            --red: #ef4444;
-        }
-        
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        
-        body {
-            background-color: #000;
-            display: flex;
-            justify-content: center;
-        }
+        :root { --bg-color:#0b0f19; --card-bg:#151c2f; --primary:#1e62ff; --text-main:#fff; --text-muted:#8b95a5; --green:#10b981; --orange:#f59e0b; --red:#ef4444; }
+        * { box-sizing:border-box; margin:0; padding:0; font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif; }
+        body { background:#000; display:flex; justify-content:center; }
+        .app-container { width:100%; max-width:400px; height:100vh; background:var(--bg-color); color:var(--text-main); position:relative; overflow-x:hidden; overflow-y:auto; padding-bottom:80px; }
+        .header { padding:20px; display:flex; justify-content:space-between; align-items:center; }
+        .header h2 { font-size:18px; font-weight:600; } .header i { font-size:20px; color:var(--text-muted); }
+        .tab-content { display:none; padding:0 20px; animation:fadeIn .3s; } .tab-content.active { display:block; }
+        @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
+        .card { background:var(--card-bg); border-radius:16px; padding:20px; margin-bottom:15px; }
 
-        /* Mobile App Container */
-        .app-container {
-            width: 100%;
-            max-width: 400px;
-            height: 100vh;
-            background-color: var(--bg-color);
-            color: var(--text-main);
-            position: relative;
-            overflow-x: hidden;
-            overflow-y: auto;
-            padding-bottom: 80px;
-        }
+        /* Hydration score and animated water level */
+        .score-circle { width:150px; height:150px; border-radius:50%; background:conic-gradient(var(--primary) 86%,#2a3553 0); display:flex; justify-content:center; align-items:center; margin:0 auto 20px; position:relative; }
+        .score-inner { width:130px; height:130px; border-radius:50%; background:var(--card-bg); display:flex; flex-direction:column; justify-content:center; align-items:center; position:relative; overflow:hidden; isolation:isolate; }
+        .water-wave { position:absolute; z-index:-1; left:-25%; bottom:-24%; width:150%; height:110%; background:rgba(30,98,255,.28); border-radius:46% 54% 0 0 / 12% 16% 0 0; animation:waveRipple 5s ease-in-out infinite; transform:rotate(-3deg); }
+        .water-wave::after { content:''; position:absolute; left:-8%; top:-6px; width:116%; height:18px; border-radius:50%; background:rgba(91,170,255,.7); animation:waveTop 3.5s ease-in-out infinite; }
+        @keyframes waveRipple { 0%,100% { transform:translateX(-2%) rotate(-3deg); } 50% { transform:translateX(5%) rotate(3deg); } }
+        @keyframes waveTop { 0%,100% { transform:translateX(-3%) rotate(1deg); } 50% { transform:translateX(3%) rotate(-1deg); } }
+        .score-content { position:relative; z-index:1; text-align:center; text-shadow:0 1px 4px #0b0f19; }
+        .score-inner h1 { font-size:42px; margin:0; } .score-inner p { color:var(--green); font-size:14px; }
+        .stats-grid { display:grid; grid-template-columns:1fr 1fr; gap:15px; } .stat-box { background:var(--card-bg); padding:15px; border-radius:12px; }
+        .stat-box h4 { font-size:12px; color:var(--text-muted); font-weight:normal; margin-bottom:5px; } .stat-box p { font-size:18px; font-weight:bold; }
+        .btn { width:100%; padding:15px; border-radius:12px; border:none; background:var(--primary); color:#fff; font-size:16px; font-weight:bold; cursor:pointer; margin-top:10px; transition:.2s; } .btn:active { transform:scale(.98); } .btn-outline { background:transparent; border:1px solid var(--primary); color:var(--primary); }
+        .chart-container { margin-bottom:20px; height:150px; } .chart-header { display:flex; justify-content:space-between; margin-bottom:10px; }
+        .ai-recommendation { border:1px solid var(--primary); background:rgba(30,98,255,.1); } .ai-recommendation h3 { color:var(--primary); margin-bottom:10px; display:flex; align-items:center; gap:10px; }
+        .history-item { display:flex; justify-content:space-between; align-items:center; padding:15px 0; border-bottom:1px solid #2a3553; } .history-item:last-child { border-bottom:none; }
+        .setting-item { display:flex; justify-content:space-between; align-items:center; padding:15px 0; border-bottom:1px solid #2a3553; } .setting-item:last-child { border-bottom:none; }
+        .toggle-switch { width:50px; height:26px; background:#2a3553; border-radius:13px; position:relative; cursor:pointer; flex:0 0 auto; } .toggle-switch.active { background:var(--primary); }
+        .toggle-switch::after { content:''; position:absolute; top:3px; left:3px; width:20px; height:20px; background:#fff; border-radius:50%; transition:.3s; } .toggle-switch.active::after { left:27px; }
+        .bottom-nav { position:absolute; bottom:0; width:100%; height:70px; background:var(--card-bg); display:flex; justify-content:space-around; align-items:center; border-top:1px solid #2a3553; }
+        .nav-item { color:var(--text-muted); display:flex; flex-direction:column; align-items:center; font-size:12px; cursor:pointer; gap:5px; } .nav-item.active { color:var(--primary); } .nav-item i { font-size:20px; }
+        .patch-status { display:flex; align-items:center; gap:10px; color:var(--green); margin-bottom:15px; font-size:14px; }
 
-        /* Header */
-        .header { padding: 20px; display: flex; justify-content: space-between; align-items: center; }
-        .header h2 { font-size: 18px; font-weight: 600; }
-        .header i { font-size: 20px; color: var(--text-muted); }
-
-        /* Tabs */
-        .tab-content { display: none; padding: 0 20px; animation: fadeIn 0.3s; }
-        .tab-content.active { display: block; }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-
-        /* Cards */
-        .card { background: var(--card-bg); border-radius: 16px; padding: 20px; margin-bottom: 15px; }
-        
-        /* Home - Hydration Score */
-        .score-circle {
-            width: 150px; height: 150px; border-radius: 50%;
-            background: conic-gradient(var(--primary) 86%, #2a3553 0);
-            display: flex; justify-content: center; align-items: center;
-            margin: 0 auto 20px auto; position: relative;
-        }
-        .score-inner {
-            width: 130px; height: 130px; border-radius: 50%;
-            background: var(--card-bg);
-            display: flex; flex-direction: column; justify-content: center; align-items: center;
-        }
-        .score-inner h1 { font-size: 42px; margin: 0; }
-        .score-inner p { color: var(--green); font-size: 14px; }
-
-        /* Home - Grid Stats */
-        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
-        .stat-box { background: var(--card-bg); padding: 15px; border-radius: 12px; }
-        .stat-box h4 { font-size: 12px; color: var(--text-muted); font-weight: normal; margin-bottom: 5px;}
-        .stat-box p { font-size: 18px; font-weight: bold; }
-        
-        /* Buttons */
-        .btn {
-            width: 100%; padding: 15px; border-radius: 12px; border: none;
-            background: var(--primary); color: white; font-size: 16px; font-weight: bold;
-            cursor: pointer; margin-top: 10px; transition: 0.2s;
-        }
-        .btn:active { transform: scale(0.98); }
-        .btn-outline { background: transparent; border: 1px solid var(--primary); color: var(--primary); }
-
-        /* Live Tracking Charts */
-        .chart-container { margin-bottom: 20px; height: 150px; }
-        .chart-header { display: flex; justify-content: space-between; margin-bottom: 10px; }
-        
-        /* AI & History */
-        .ai-recommendation { border: 1px solid var(--primary); background: rgba(30, 98, 255, 0.1); }
-        .ai-recommendation h3 { color: var(--primary); margin-bottom: 10px; display: flex; align-items: center; gap: 10px; }
-        .history-item { display: flex; justify-content: space-between; align-items: center; padding: 15px 0; border-bottom: 1px solid #2a3553; }
-        .history-item:last-child { border-bottom: none; }
-
-        /* Settings Toggle */
-        .setting-item { display: flex; justify-content: space-between; align-items: center; padding: 15px 0; border-bottom: 1px solid #2a3553; }
-        .toggle-switch { width: 50px; height: 26px; background: #2a3553; border-radius: 13px; position: relative; cursor: pointer; }
-        .toggle-switch.active { background: var(--primary); }
-        .toggle-switch::after {
-            content: ''; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px;
-            background: white; border-radius: 50%; transition: 0.3s;
-        }
-        .toggle-switch.active::after { left: 27px; }
-
-        /* Bottom Navigation */
-        .bottom-nav {
-            position: absolute; bottom: 0; width: 100%; height: 70px;
-            background: var(--card-bg); display: flex; justify-content: space-around;
-            align-items: center; border-top: 1px solid #2a3553;
-        }
-        .nav-item {
-            color: var(--text-muted); display: flex; flex-direction: column;
-            align-items: center; font-size: 12px; cursor: pointer; gap: 5px;
-        }
-        .nav-item.active { color: var(--primary); }
-        .nav-item i { font-size: 20px; }
-
-        .patch-status { display: flex; align-items: center; gap: 10px; color: var(--green); margin-bottom: 15px; font-size: 14px; }
+        /* Cramp risk predictor */
+        .risk-card { border:1px solid rgba(245,158,11,.45); } .risk-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
+        .risk-label { color:var(--text-muted); font-size:12px; } .risk-value { font-size:24px; font-weight:700; color:var(--green); } .risk-value.medium { color:var(--orange); } .risk-value.high { color:var(--red); }
+        .risk-meter { height:10px; background:#2a3553; border-radius:10px; overflow:hidden; } .risk-fill { height:100%; width:25%; background:var(--green); border-radius:10px; transition:width .5s,background .5s; }
+        .risk-fill.medium { width:60%; background:var(--orange); } .risk-fill.high { width:100%; background:var(--red); }
+        .risk-meta { display:flex; justify-content:space-between; color:var(--text-muted); font-size:11px; margin-top:9px; }
+        /* In-workout alert */
+        .workout-alert { position:fixed; top:0; left:50%; width:min(360px,calc(100% - 24px)); transform:translate(-50%,-130%); z-index:20; padding:16px 18px; background:#190f19; border:1px solid var(--red); border-radius:0 0 12px 12px; color:#fff; box-shadow:0 0 22px rgba(239,68,68,.45); font-size:13px; line-height:1.4; transition:transform .45s cubic-bezier(.2,.8,.2,1); }
+        .workout-alert.show { transform:translate(-50%,0); } .workout-alert button { float:right; border:0; background:none; color:#ff9b9b; font-size:18px; cursor:pointer; margin-left:8px; }
     </style>
 </head>
 <body>
-
 <div class="app-container">
+    <div id="workoutAlert" class="workout-alert" role="alert"><button onclick="hideWorkoutAlert()" aria-label="Dismiss alert">×</button>⚠️ Core temp rising rapidly. Drink 8oz of water now to maintain performance.</div>
+    <div class="header"><h2>Good morning, Alex</h2><i class="fa-regular fa-bell"></i></div>
 
-    <!-- Header -->
-    <div class="header">
-        <h2>Good morning, Alex</h2>
-        <i class="fa-regular fa-bell"></i>
-    </div>
-
-    <!-- HOME TAB -->
     <div id="home" class="tab-content active">
-        <div class="card">
-            <h3 style="text-align: center; margin-bottom: 20px; font-weight: normal;">Today's Hydration Score</h3>
-            <div class="score-circle">
-                <div class="score-inner">
-                    <h1>86</h1>
-                    <p><i class="fa-solid fa-droplet"></i> Good</p>
-                </div>
-            </div>
-            <p style="text-align: center; color: var(--text-muted); font-size: 14px;">You're in a good range. Keep it up!</p>
-        </div>
-
-        <div class="stats-grid">
-            <div class="stat-box">
-                <h4><i class="fa-solid fa-droplet" style="color: var(--primary);"></i> Hydration</h4>
-                <p>86% <span style="color: var(--green); font-size: 12px; font-weight: normal;">Good</span></p>
-            </div>
-            <div class="stat-box">
-                <h4><i class="fa-solid fa-temperature-half" style="color: var(--orange);"></i> Sweat Rate</h4>
-                <p>0.8 <span style="font-size: 12px; font-weight: normal; color: var(--text-muted);">L/hr</span></p>
-            </div>
-            <div class="stat-box">
-                <h4><i class="fa-solid fa-bolt" style="color: var(--green);"></i> Electrolytes</h4>
-                <p style="font-size: 16px;">Balanced</p>
-            </div>
-            <div class="stat-box">
-                <h4><i class="fa-solid fa-fire" style="color: var(--red);"></i> Heat Stress</h4>
-                <p style="color: var(--green); font-size: 16px;">Low (Safe)</p>
-            </div>
-        </div>
-
-        <div class="card" style="margin-top: 15px;">
-            <div class="patch-status" id="patchStatusText">
-                <i class="fa-brands fa-bluetooth"></i> Patch Disconnected
-            </div>
-            <button class="btn btn-outline" id="connectBtn" onclick="connectPatch()">CONNECT PATCH</button>
-            <button class="btn" style="margin-top: 10px;" onclick="switchTab('live')">START SESSION</button>
-        </div>
+        <div class="card"><h3 style="text-align:center;margin-bottom:20px;font-weight:normal;">Today's Hydration Score</h3><div class="score-circle"><div class="score-inner"><div class="water-wave"></div><div class="score-content"><h1>86</h1><p><i class="fa-solid fa-droplet"></i> Good</p></div></div></div><p style="text-align:center;color:var(--text-muted);font-size:14px;">You're in a good range. Keep it up!</p></div>
+        <div class="stats-grid"><div class="stat-box"><h4><i class="fa-solid fa-droplet" style="color:var(--primary);"></i> Hydration</h4><p>86% <span style="color:var(--green);font-size:12px;font-weight:normal;">Good</span></p></div><div class="stat-box"><h4><i class="fa-solid fa-temperature-half" style="color:var(--orange);"></i> Sweat Rate</h4><p>0.8 <span style="font-size:12px;font-weight:normal;color:var(--text-muted);">L/hr</span></p></div><div class="stat-box"><h4><i class="fa-solid fa-bolt" style="color:var(--green);"></i> Electrolytes</h4><p style="font-size:16px;">Balanced</p></div><div class="stat-box"><h4><i class="fa-solid fa-fire" style="color:var(--red);"></i> Heat Stress</h4><p style="color:var(--green);font-size:16px;">Low (Safe)</p></div></div>
+        <div class="card" style="margin-top:15px;"><div class="patch-status" id="patchStatusText"><i class="fa-brands fa-bluetooth"></i> Patch Disconnected</div><button class="btn btn-outline" id="connectBtn" onclick="connectPatch()">CONNECT PATCH</button><button class="btn" style="margin-top:10px;" onclick="switchTab('live')">START SESSION</button></div>
     </div>
 
-    <!-- LIVE SESSION TAB -->
     <div id="live" class="tab-content">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-            <span style="color: var(--green); font-size: 12px; letter-spacing: 1px;">● IN PROGRESS</span>
-            <h2 id="timer">00:45:32</h2>
-        </div>
-
-        <div class="card">
-            <div class="chart-header">
-                <span>Hydration Level</span>
-                <span>86%</span>
-            </div>
-            <div class="chart-container"><canvas id="hydChart"></canvas></div>
-        </div>
-
-        <div class="card">
-            <div class="chart-header">
-                <span>Sweat Rate</span>
-                <span style="color: var(--orange);">0.8 L/hr</span>
-            </div>
-            <div class="chart-container"><canvas id="sweatChart"></canvas></div>
-        </div>
-
-        <div class="card">
-            <div class="chart-header">
-                <span>Core Temp.</span>
-                <span style="color: var(--green);" id="coreTempVal">99.1 °F</span>
-            </div>
-            <div class="chart-container"><canvas id="tempChart"></canvas></div>
-        </div>
-        
-        <button class="btn" style="background: var(--card-bg); border: 1px solid var(--primary); color: var(--primary);" onclick="switchTab('home')">END SESSION</button>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;"><span style="color:var(--green);font-size:12px;letter-spacing:1px;">● IN PROGRESS</span><h2 id="timer">00:45:32</h2></div>
+        <div class="card"><div class="chart-header"><span>Hydration Level</span><span>86%</span></div><div class="chart-container"><canvas id="hydChart"></canvas></div></div>
+        <div class="card"><div class="chart-header"><span>Sweat Rate</span><span style="color:var(--orange);" id="sweatRateVal">0.8 L/hr</span></div><div class="chart-container"><canvas id="sweatChart"></canvas></div></div>
+        <div class="card"><div class="chart-header"><span>Core Temp.</span><span style="color:var(--green);" id="coreTempVal">99.1 °F</span></div><div class="chart-container"><canvas id="tempChart"></canvas></div></div>
+        <div class="card risk-card"><div class="risk-header"><div><h3 style="margin-bottom:5px;">Muscle Cramp Risk</h3><span class="risk-label" id="riskReason">Monitoring sustained sweat rate</span></div><strong class="risk-value" id="crampRiskValue">LOW</strong></div><div class="risk-meter"><div class="risk-fill" id="crampRiskFill"></div></div><div class="risk-meta"><span>Low</span><span>Medium</span><span>High</span></div></div>
+        <button class="btn" style="background:var(--card-bg);border:1px solid var(--primary);color:var(--primary);" onclick="switchTab('home')">END SESSION</button>
     </div>
 
-    <!-- INSIGHTS & HISTORY TAB -->
-    <div id="insights" class="tab-content">
-        <div class="card ai-recommendation">
-            <h3><i class="fa-solid fa-robot"></i> AI Hydration Plan</h3>
-            <p style="font-size: 14px; margin-bottom: 15px; line-height: 1.5;">Based on your sweat outtake of 0.8 L/hr and core temperature trends, your body is losing sodium rapidly.</p>
-            <div style="background: var(--bg-color); padding: 15px; border-radius: 8px; text-align: center;">
-                <i class="fa-solid fa-bottle-water" style="font-size: 30px; color: var(--primary); margin-bottom: 10px;"></i>
-                <h4 style="margin-bottom: 5px;">Drink 16-24 oz of water</h4>
-                <p style="font-size: 12px; color: var(--text-muted);">Infused with electrolytes (focus on sodium/potassium) within the next 30 minutes.</p>
-            </div>
-            <button class="btn" style="margin-top: 15px;" onclick="alert('Hydration logged!')">I DRANK THIS</button>
-        </div>
+    <div id="insights" class="tab-content"><div class="card ai-recommendation"><h3><i class="fa-solid fa-robot"></i> AI Hydration Plan</h3><p style="font-size:14px;margin-bottom:15px;line-height:1.5;">Based on your sweat outtake of 0.8 L/hr and core temperature trends, your body is losing sodium rapidly.</p><div style="background:var(--bg-color);padding:15px;border-radius:8px;text-align:center;"><i class="fa-solid fa-bottle-water" style="font-size:30px;color:var(--primary);margin-bottom:10px;"></i><h4 style="margin-bottom:5px;">Drink 16-24 oz of water</h4><p style="font-size:12px;color:var(--text-muted);">Infused with electrolytes (focus on sodium/potassium) within the next 30 minutes.</p></div><button class="btn" style="margin-top:15px;" onclick="alert('Hydration logged!')">I DRANK THIS</button></div><h3 style="margin:20px 0 10px;font-size:16px;">Past Workouts</h3><div class="card"><div class="history-item"><div><h4 style="margin-bottom:5px;"><i class="fa-solid fa-person-running" style="color:var(--primary);width:20px;"></i> Outdoor Run</h4><span style="font-size:12px;color:var(--text-muted);">Today • 45:32</span></div><div style="text-align:right;"><h3>86</h3><span style="font-size:12px;color:var(--green);">Good</span></div></div><div class="history-item"><div><h4 style="margin-bottom:5px;"><i class="fa-solid fa-basketball" style="color:var(--orange);width:20px;"></i> Basketball</h4><span style="font-size:12px;color:var(--text-muted);">Yesterday • 1:12:06</span></div><div style="text-align:right;"><h3>78</h3><span style="font-size:12px;color:var(--orange);">Fair</span></div></div><div class="history-item"><div><h4 style="margin-bottom:5px;"><i class="fa-solid fa-dumbbell" style="color:var(--text-muted);width:20px;"></i> Strength Training</h4><span style="font-size:12px;color:var(--text-muted);">May 22 • 1:05:15</span></div><div style="text-align:right;"><h3>90</h3><span style="font-size:12px;color:var(--green);">Excellent</span></div></div></div><h3 style="margin:20px 0 10px;font-size:16px;">Achievements</h3><div class="card" style="display:flex;gap:15px;"><i class="fa-solid fa-medal" style="font-size:30px;color:var(--orange);"></i><div><h4 style="margin-bottom:5px;">7-Day Streak!</h4><p style="font-size:12px;color:var(--text-muted);">You've maintained excellent hydration for a full week.</p></div></div></div>
 
-        <h3 style="margin: 20px 0 10px 0; font-size: 16px;">Past Workouts</h3>
-        <div class="card">
-            <div class="history-item">
-                <div>
-                    <h4 style="margin-bottom: 5px;"><i class="fa-solid fa-person-running" style="color: var(--primary); width: 20px;"></i> Outdoor Run</h4>
-                    <span style="font-size: 12px; color: var(--text-muted);">Today • 45:32</span>
-                </div>
-                <div style="text-align: right;">
-                    <h3 style="color: white;">86</h3>
-                    <span style="font-size: 12px; color: var(--green);">Good</span>
-                </div>
-            </div>
-            <div class="history-item">
-                <div>
-                    <h4 style="margin-bottom: 5px;"><i class="fa-solid fa-basketball" style="color: var(--orange); width: 20px;"></i> Basketball</h4>
-                    <span style="font-size: 12px; color: var(--text-muted);">Yesterday • 1:12:06</span>
-                </div>
-                <div style="text-align: right;">
-                    <h3 style="color: white;">78</h3>
-                    <span style="font-size: 12px; color: var(--orange);">Fair</span>
-                </div>
-            </div>
-            <div class="history-item">
-                <div>
-                    <h4 style="margin-bottom: 5px;"><i class="fa-solid fa-dumbbell" style="color: var(--text-muted); width: 20px;"></i> Strength Training</h4>
-                    <span style="font-size: 12px; color: var(--text-muted);">May 22 • 1:05:15</span>
-                </div>
-                <div style="text-align: right;">
-                    <h3 style="color: white;">90</h3>
-                    <span style="font-size: 12px; color: var(--green);">Excellent</span>
-                </div>
-            </div>
-        </div>
-        
-        <h3 style="margin: 20px 0 10px 0; font-size: 16px;">Achievements</h3>
-        <div class="card" style="display: flex; gap: 15px;">
-             <i class="fa-solid fa-medal" style="font-size: 30px; color: var(--orange);"></i>
-             <div>
-                 <h4 style="margin-bottom: 5px;">7-Day Streak!</h4>
-                 <p style="font-size: 12px; color: var(--text-muted);">You've maintained excellent hydration for a full week.</p>
-             </div>
-        </div>
-    </div>
+    <div id="settings" class="tab-content"><h3 style="margin-bottom:15px;font-size:16px;">Preferences</h3><div class="card"><div class="setting-item"><div><h4>Temperature Unit</h4><p style="font-size:12px;color:var(--text-muted);" id="unitDesc">Currently using Fahrenheit (°F)</p></div><div class="toggle-switch" id="unitToggle" onclick="toggleUnit()"></div></div></div><h3 style="margin:20px 0 15px;font-size:16px;">Integrations</h3><div class="card"><div class="setting-item"><div><h4><i class="fa-brands fa-strava" style="color:var(--orange);"></i> Sync to Strava</h4><p style="font-size:12px;color:var(--text-muted);">Share completed workouts</p></div><div class="toggle-switch" onclick="this.classList.toggle('active')"></div></div><div class="setting-item"><div><h4><i class="fa-brands fa-apple" style="color:var(--text-main);"></i> Connect Apple Health</h4><p style="font-size:12px;color:var(--text-muted);">Sync health and activity data</p></div><div class="toggle-switch" onclick="this.classList.toggle('active')"></div></div></div><h3 style="margin:20px 0 15px;font-size:16px;">Alerts</h3><div class="card"><div class="setting-item"><div><h4><i class="fa-solid fa-droplet" style="color:var(--primary);"></i> Hydration Alert</h4><p style="font-size:12px;color:var(--text-muted);">Warn when getting dehydrated</p></div><div class="toggle-switch active" onclick="this.classList.toggle('active')"></div></div><div class="setting-item"><div><h4><i class="fa-solid fa-fire" style="color:var(--red);"></i> Heat Stress Alert</h4><p style="font-size:12px;color:var(--text-muted);">High risk of heat stroke</p></div><div class="toggle-switch active" onclick="this.classList.toggle('active')"></div></div></div></div>
 
-    <!-- SETTINGS TAB -->
-    <div id="settings" class="tab-content">
-        <h3 style="margin-bottom: 15px; font-size: 16px;">Preferences</h3>
-        <div class="card">
-            <div class="setting-item">
-                <div>
-                    <h4>Temperature Unit</h4>
-                    <p style="font-size: 12px; color: var(--text-muted);" id="unitDesc">Currently using Fahrenheit (°F)</p>
-                </div>
-                <!-- F or C Toggle -->
-                <div class="toggle-switch" id="unitToggle" onclick="toggleUnit()"></div>
-            </div>
-        </div>
-
-        <h3 style="margin: 20px 0 15px 0; font-size: 16px;">Alerts</h3>
-        <div class="card">
-            <div class="setting-item">
-                <div>
-                    <h4><i class="fa-solid fa-droplet" style="color: var(--primary);"></i> Hydration Alert</h4>
-                    <p style="font-size: 12px; color: var(--text-muted);">Warn when getting dehydrated</p>
-                </div>
-                <div class="toggle-switch active" onclick="this.classList.toggle('active')"></div>
-            </div>
-            <div class="setting-item">
-                <div>
-                    <h4><i class="fa-solid fa-fire" style="color: var(--red);"></i> Heat Stress Alert</h4>
-                    <p style="font-size: 12px; color: var(--text-muted);">High risk of heat stroke</p>
-                </div>
-                <div class="toggle-switch active" onclick="this.classList.toggle('active')"></div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Bottom Navigation -->
-    <div class="bottom-nav">
-        <div class="nav-item active" onclick="switchTab('home')">
-            <i class="fa-solid fa-house"></i>
-            <span>Home</span>
-        </div>
-        <div class="nav-item" onclick="switchTab('live')">
-            <i class="fa-solid fa-chart-line"></i>
-            <span>Live</span>
-        </div>
-        <div class="nav-item" onclick="switchTab('insights')">
-            <i class="fa-solid fa-lightbulb"></i>
-            <span>Insights</span>
-        </div>
-        <div class="nav-item" onclick="switchTab('settings')">
-            <i class="fa-solid fa-gear"></i>
-            <span>Settings</span>
-        </div>
-    </div>
-
+    <div class="bottom-nav"><div class="nav-item active" onclick="switchTab('home',this)"><i class="fa-solid fa-house"></i><span>Home</span></div><div class="nav-item" onclick="switchTab('live',this)"><i class="fa-solid fa-chart-line"></i><span>Live</span></div><div class="nav-item" onclick="switchTab('insights',this)"><i class="fa-solid fa-lightbulb"></i><span>Insights</span></div><div class="nav-item" onclick="switchTab('settings',this)"><i class="fa-solid fa-gear"></i><span>Settings</span></div></div>
 </div>
-
 <script>
-    // Tab Switching Logic
-    function switchTab(tabId) {
-        document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
-        document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
-        
+    let liveAlertTimer=null, riskTimer=null, highSweatSeconds=0, chartsInitialized=false;
+    function switchTab(tabId, navItem) {
+        document.querySelectorAll('.tab-content').forEach(tab=>tab.classList.remove('active'));
+        document.querySelectorAll('.nav-item').forEach(nav=>nav.classList.remove('active'));
         document.getElementById(tabId).classList.add('active');
-        event.currentTarget.classList.add('active');
-        
-        // Re-render charts if switching to live tab so they animate
-        if(tabId === 'live') {
-            initCharts();
-        }
+        const target=navItem || document.querySelector(`.nav-item[onclick*="'${tabId}'"]`); if(target) target.classList.add('active');
+        clearTimeout(liveAlertTimer); clearInterval(riskTimer);
+        if(tabId==='live') { initCharts(); startLiveMonitoring(); liveAlertTimer=setTimeout(showWorkoutAlert,10000); }
     }
-
-    // Connect Patch Simulation
-    let isConnected = false;
-    function connectPatch() {
-        const btn = document.getElementById('connectBtn');
-        const statusText = document.getElementById('patchStatusText');
-        
-        if(!isConnected) {
-            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> CONNECTING...';
-            setTimeout(() => {
-                isConnected = true;
-                btn.innerText = 'DISCONNECT PATCH';
-                btn.classList.remove('btn-outline');
-                statusText.innerHTML = '<i class="fa-brands fa-bluetooth"></i> Patch Connected - 100% Battery';
-            }, 1500);
-        } else {
-            isConnected = false;
-            btn.innerText = 'CONNECT PATCH';
-            btn.classList.add('btn-outline');
-            statusText.innerHTML = '<i class="fa-brands fa-bluetooth"></i> Patch Disconnected';
-            statusText.style.color = 'var(--text-muted)';
-        }
+    function showWorkoutAlert(){ if(document.getElementById('live').classList.contains('active')) document.getElementById('workoutAlert').classList.add('show'); }
+    function hideWorkoutAlert(){ document.getElementById('workoutAlert').classList.remove('show'); }
+    let isConnected=false;
+    function connectPatch(){ const btn=document.getElementById('connectBtn'), status=document.getElementById('patchStatusText'); if(!isConnected){btn.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i> CONNECTING...';setTimeout(()=>{isConnected=true;btn.innerText='DISCONNECT PATCH';btn.classList.remove('btn-outline');status.innerHTML='<i class="fa-brands fa-bluetooth"></i> Patch Connected - 100% Battery';},1500);}else{isConnected=false;btn.innerText='CONNECT PATCH';btn.classList.add('btn-outline');status.innerHTML='<i class="fa-brands fa-bluetooth"></i> Patch Disconnected';status.style.color='var(--text-muted)';}}
+    let isFahrenheit=true,baseTempF=99.1;
+    function toggleUnit(){const toggle=document.getElementById('unitToggle'),desc=document.getElementById('unitDesc'),temp=document.getElementById('coreTempVal');toggle.classList.toggle('active');isFahrenheit=!isFahrenheit;if(isFahrenheit){desc.innerText='Currently using Fahrenheit (°F)';temp.innerText=baseTempF.toFixed(1)+' °F';}else{desc.innerText='Currently using Celsius (°C)';temp.innerText=((baseTempF-32)*5/9).toFixed(1)+' °C';}}
+    function updateCrampRisk(){
+        // A sustained rate above 1.0 L/hr increases risk; recovery lowers it gradually.
+        const simulatedRate=highSweatSeconds<20 ? 1.15 : (highSweatSeconds<40 ? 1.3 : 1.45);
+        const value=document.getElementById('crampRiskValue'),fill=document.getElementById('crampRiskFill'),reason=document.getElementById('riskReason');
+        if(simulatedRate>=1.2) highSweatSeconds+=5; else highSweatSeconds=Math.max(0,highSweatSeconds-5);
+        document.getElementById('sweatRateVal').innerText=simulatedRate.toFixed(1)+' L/hr';
+        let risk='LOW'; value.className='risk-value'; fill.className='risk-fill';
+        if(highSweatSeconds>=40){risk='HIGH';value.classList.add('high');fill.classList.add('high');reason.innerText='High sweat rate sustained for 40+ seconds';}
+        else if(highSweatSeconds>=20){risk='MEDIUM';value.classList.add('medium');fill.classList.add('medium');reason.innerText='Elevated sweat rate is lasting';}
+        else reason.innerText='Monitoring sustained sweat rate';
+        value.innerText=risk;
     }
-
-    // Temperature Unit Toggle (F to C)
-    let isFahrenheit = true;
-    let baseTempF = 99.1;
-    function toggleUnit() {
-        const toggle = document.getElementById('unitToggle');
-        const desc = document.getElementById('unitDesc');
-        const coreTempVal = document.getElementById('coreTempVal');
-        
-        toggle.classList.toggle('active');
-        isFahrenheit = !isFahrenheit;
-        
-        if(isFahrenheit) {
-            desc.innerText = "Currently using Fahrenheit (°F)";
-            coreTempVal.innerText = baseTempF.toFixed(1) + " °F";
-        } else {
-            desc.innerText = "Currently using Celsius (°C)";
-            let tempC = (baseTempF - 32) * 5/9;
-            coreTempVal.innerText = tempC.toFixed(1) + " °C";
-        }
-    }
-
-    // Live Tracking Charts using Chart.js
-    let chartsInitialized = false;
-    function initCharts() {
-        if(chartsInitialized) return;
-        
-        Chart.defaults.color = '#8b95a5';
-        Chart.defaults.font.family = "'Segoe UI', sans-serif";
-        
-        const commonOptions = {
-            responsive: true, maintainAspectRatio: false,
-            plugins: { legend: { display: false } },
-            scales: {
-                x: { grid: { display: false, color: '#2a3553' } },
-                y: { grid: { color: '#2a3553' }, border: { dash: [4, 4] } }
-            },
-            elements: { point: { radius: 0 } }
-        };
-
-        // Hydration Chart (Blue)
-        new Chart(document.getElementById('hydChart'), {
-            type: 'line',
-            data: {
-                labels: ['0', '10', '20', '30', '40', '50'],
-                datasets: [{
-                    data: [100, 98, 95, 92, 88, 86],
-                    borderColor: '#1e62ff',
-                    borderWidth: 2,
-                    tension: 0.4
-                }]
-            },
-            options: commonOptions
-        });
-
-        // Sweat Rate Chart (Orange/Yellow)
-        new Chart(document.getElementById('sweatChart'), {
-            type: 'line',
-            data: {
-                labels: ['0', '10', '20', '30', '40', '50'],
-                datasets: [{
-                    data: [0.2, 0.5, 1.2, 1.4, 0.9, 0.8],
-                    borderColor: '#f59e0b',
-                    borderWidth: 2,
-                    tension: 0.4
-                }]
-            },
-            options: commonOptions
-        });
-
-        // Core Temp Chart (Green)
-        new Chart(document.getElementById('tempChart'), {
-            type: 'line',
-            data: {
-                labels: ['0', '10', '20', '30', '40', '50'],
-                datasets: [{
-                    data: [98.6, 98.7, 98.9, 99.2, 99.1, 99.1],
-                    borderColor: '#10b981',
-                    borderWidth: 2,
-                    tension: 0.4
-                }]
-            },
-            options: commonOptions
-        });
-        
-        chartsInitialized = true;
-    }
+    function startLiveMonitoring(){ highSweatSeconds=0; updateCrampRisk(); riskTimer=setInterval(updateCrampRisk,5000); }
+    function initCharts(){if(chartsInitialized)return;Chart.defaults.color='#8b95a5';Chart.defaults.font.family="'Segoe UI',sans-serif";const options={responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false}},y:{grid:{color:'#2a3553'},border:{dash:[4,4]}}},elements:{point:{radius:0}}};
+        new Chart(document.getElementById('hydChart'),{type:'line',data:{labels:['0','10','20','30','40','50'],datasets:[{data:[100,98,95,92,88,86],borderColor:'#1e62ff',borderWidth:2,tension:.4}]},options});
+        new Chart(document.getElementById('sweatChart'),{type:'line',data:{labels:['0','10','20','30','40','50'],datasets:[{data:[.2,.5,1.2,1.4,.9,.8],borderColor:'#f59e0b',borderWidth:2,tension:.4}]},options});
+        new Chart(document.getElementById('tempChart'),{type:'line',data:{labels:['0','10','20','30','40','50'],datasets:[{data:[98.6,98.7,98.9,99.2,99.1,99.1],borderColor:'#10b981',borderWidth:2,tension:.4}]},options});chartsInitialized=true;}
 </script>
 </body>
 </html>
